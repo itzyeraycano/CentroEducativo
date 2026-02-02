@@ -1,32 +1,31 @@
-FROM tomcat:9.0-jdk8-openjdk-slim
+# Cambiamos a Tomcat 10.1, que es el que soporta el paquete 'jakarta.servlet'
+FROM tomcat:10.1-jdk17-openjdk-slim
 
-# Instalamos curl y jq para que el script de población funcione
+# Instalamos curl y jq para el script de población
 RUN apt-get update && apt-get install -y curl jq && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/local/tomcat
 
-# Copiamos todo el contenido del repositorio al contenedor
+# Copiamos todo el repositorio
 COPY . .
 
 # 1. Configurar la WebApp de Tomcat
-# Mueve tu contenido web al lugar donde Tomcat lo sirve
 RUN mkdir -p webapps/ROOT && \
     cp -r NOL2425/src/main/webapp/* webapps/ROOT/
 
-# 2. Compilación manual de tus Servlets
-# Usamos las librerías en WEB-INF/lib para compilar el código de src
+# 2. Compilación manual de los Servlets
+# Añadimos las librerías de Tomcat 10 al classpath para que encuentre jakarta.servlet
 RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
     javac -d webapps/ROOT/WEB-INF/classes \
     -cp "NOL2425/src/main/webapp/WEB-INF/lib/*:/usr/local/tomcat/lib/*" \
     $(find NOL2425/src/main/java -name "*.java")
 
-# 3. Truco de compatibilidad para el script .sh de la API
-# Creamos la ruta de la universidad para que el .sh original no falle
+# 3. Preparar el motor de la API (.jar)
+# Mantenemos la ruta de la universidad por compatibilidad
 RUN mkdir -p /home/dew/CentroEducativo/ && \
-    cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/
+    cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
 
-# 4. Crear el script de arranque (Start Script)
-# Lanza la API, espera a que cargue, puebla datos y arranca Tomcat
+# 4. Script de arranque
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash\n\
 ./lanzaCentroEducativo.sh &\n\
