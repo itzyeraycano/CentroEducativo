@@ -31,9 +31,9 @@ RUN mkdir -p /home/dew/CentroEducativo/ && \
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash\n\
 java -Xmx128m -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" \
-     org.springframework.boot.loader.JarLauncher &\n\
-echo "Levantando API con parche JAXB..."\n\
-sleep 45\n\
+     org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &\n\
+echo "Levantando API... esta vez esperamos 85s para asegurar la base de datos..."\n\
+sleep 85\n\
 ./poblar_centro_educativo.sh\n\
 export CATALINA_OPTS="$CATALINA_OPTS -Xms128m -Xmx192m"\n\
 catalina.sh run' > start.sh && \
