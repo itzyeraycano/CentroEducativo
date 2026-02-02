@@ -1,4 +1,3 @@
-# Cambiamos a Tomcat 10 con Java 11 para máxima compatibilidad
 FROM tomcat:10.1-jdk11-openjdk-slim
 
 RUN apt-get update && apt-get install -y curl jq && rm -rf /var/lib/apt/lists/*
@@ -21,14 +20,16 @@ RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
 RUN mkdir -p /home/dew/CentroEducativo/ && \
     cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
 
-# 4. Script de arranque
-# Nota: En Java 11 no solemos necesitar tantas banderas de "opens" como en Java 17
+# 4. Script de arranque OPTIMIZADO PARA RAM
+# -Xmx128m limita la API a 128MB
+# CATALINA_OPTS limita Tomcat a 200MB
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash\n\
-java -jar es.upv.etsinf.ti.centroeducativo-0.2.0.jar &\n\
-echo "Esperando 30s a que la API levante..."\n\
-sleep 30\n\
+java -Xmx128m -jar es.upv.etsinf.ti.centroeducativo-0.2.0.jar &\n\
+echo "Esperando 40s a que la API levante con RAM limitada..."\n\
+sleep 40\n\
 ./poblar_centro_educativo.sh\n\
+export CATALINA_OPTS="$CATALINA_OPTS -Xms128m -Xmx200m"\n\
 catalina.sh run' > start.sh && \
     chmod +x start.sh
 
