@@ -22,7 +22,7 @@
 
 	    <!-- Botón de Cerrar Sesión -->
             <div class="d-flex justify-content-end mb-4">
-              <a href="/NOL2425/alumno?action=cierra" class="btn btn-outline-danger btn-sm" target="_self">
+              <a href="/alumno?action=cierra" class="btn btn-outline-danger btn-sm" target="_self">
                 <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
               </a>
             </div>
