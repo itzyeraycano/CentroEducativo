@@ -1,6 +1,6 @@
 FROM tomcat:10.1-jdk11-openjdk-slim
 
-# 1. Instalación de dependencias
+# 1. Instalación de herramientas y librerías JAXB
 RUN apt-get update && apt-get install -y curl jq wget socat procps && \
     wget https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar && \
     wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-core/2.3.0.1/jaxb-core-2.3.0.1.jar && \
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y curl jq wget socat procps && \
 
 WORKDIR /usr/local/tomcat
 
-# 2. Copiar archivos
+# 2. Copiar archivos del repositorio
 COPY . .
 
 # 3. Preparar Servlets y Compilar
@@ -19,14 +19,22 @@ RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
     -cp "NOL2425/src/main/webapp/WEB-INF/lib/*:/usr/local/tomcat/lib/*" \
     $(find NOL2425/src/main/java -name "*.java")
 
-RUN mkdir -p /home/dew/CentroEducativo/ && \
-    cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
-
-# 4. Generar start.sh con detección de errores mejorada
+# 4. Generar script de arranque con validación de Git LFS
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash' > start.sh && \
+    # Validación de integridad del JAR
+    echo 'FILE="es.upv.etsinf.ti.centroeducativo-0.2.0.jar"' >> start.sh && \
+    echo 'SIZE=$(stat -c%s "$FILE" 2>/dev/null || echo 0)' >> start.sh && \
+    echo 'if [ "$SIZE" -lt 1000000 ]; then' >> start.sh && \
+    echo '  echo "=== ERROR CRÍTICO: EL JAR MIDE MENOS DE 1MB ==="' >> start.sh && \
+    echo '  echo "Probablemente sea un puntero de Git LFS. Contenido del archivo:"' >> start.sh && \
+    echo '  cat "$FILE"' >> start.sh && \
+    echo '  exit 1' >> start.sh && \
+    echo 'fi' >> start.sh && \
+    # Engaño al Health Check de Koyeb
     echo 'socat TCP-LISTEN:8080,fork,reuseaddr PIPE &' >> start.sh && \
     echo 'SOCAT_PID=$!' >> start.sh && \
+    # Configuración de usuarios Tomcat
     echo 'cat <<EOF > conf/tomcat-users.xml' >> start.sh && \
     echo '<?xml version="1.0" encoding="UTF-8"?>' >> start.sh && \
     echo '<tomcat-users>' >> start.sh && \
@@ -36,26 +44,20 @@ RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '  <user username="11223344A" password="batman" roles="rolalu"/>' >> start.sh && \
     echo '</tomcat-users>' >> start.sh && \
     echo 'EOF' >> start.sh && \
-    echo 'echo "Lanzando API (Metodo -jar)..."' >> start.sh && \
-    # CAMBIO CLAVE: Usamos -jar y añadimos las librerías al classpath de carga
-    echo 'java -Xms128m -Xmx128m -XX:+UseSerialGC -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" -jar es.upv.etsinf.ti.centroeducativo-0.2.0.jar > api_log.txt 2>&1 &' >> start.sh && \
+    # Lanzamiento de la API
+    echo 'echo "Lanzando API..."' >> start.sh && \
+    echo 'java -Xms128m -Xmx128m -XX:+UseSerialGC -Dloader.path="." -jar "$FILE" > api_log.txt 2>&1 &' >> start.sh && \
     echo 'API_PID=$!' >> start.sh && \
-    echo 'sleep 5' >> start.sh && \
+    echo 'sleep 10' >> start.sh && \
     echo 'if ! ps -p $API_PID > /dev/null; then' >> start.sh && \
-    echo '    echo "=== ERROR CRITICO: El modo -jar fallo. Contenido del JAR: ==="' >> start.sh && \
-    echo '    jar -tf es.upv.etsinf.ti.centroeducativo-0.2.0.jar | grep .class | head -n 20' >> start.sh && \
-    echo '    cat api_log.txt' >> start.sh && \
-    echo '    exit 1' >> start.sh && \
+    echo '  echo "=== LA API HA MUERTO AL ARRANCAR ==="; cat api_log.txt; exit 1' >> start.sh && \
     echo 'fi' >> start.sh && \
-    echo 'echo "API arrancada. Esperando a Hibernate..."' >> start.sh && \
+    # Espera y población
     echo 'count=0' >> start.sh && \
     echo 'while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do' >> start.sh && \
-    echo '    count=$((count + 1))' >> start.sh && \
-    echo '    echo "API cargando... intento $count de 60"' >> start.sh && \
-    echo '    sleep 15' >> start.sh && \
-    echo '    if [ $count -ge 60 ]; then echo "TIMEOUT"; cat api_log.txt; exit 1; fi' >> start.sh && \
+    echo '  count=$((count + 1)); echo "Esperando API... intento $count"; sleep 15' >> start.sh && \
+    echo '  if [ $count -ge 60 ]; then cat api_log.txt; exit 1; fi' >> start.sh && \
     echo 'done' >> start.sh && \
-    echo 'echo "API LISTA! Ejecutando poblacion..."' >> start.sh && \
     echo './poblar_centro_educativo.sh' >> start.sh && \
     echo 'kill $SOCAT_PID' >> start.sh && \
     echo 'export CATALINA_OPTS="-Xms128m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"' >> start.sh && \
