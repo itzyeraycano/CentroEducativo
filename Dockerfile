@@ -20,12 +20,14 @@ RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
 RUN mkdir -p /home/dew/CentroEducativo/ && cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
 
 
+# ... (Todo lo anterior igual hasta el printf del start.sh)
+
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     printf '#!/bin/bash\n\
 socat TCP-LISTEN:8080,fork,reuseaddr PIPE & \n\
 SOCAT_PID=$!\n\
 \n\
-# 1. Inyectar usuarios\n\
+# 1. Inyectar usuarios para AuthFiltro\n\
 cat <<EOF > conf/tomcat-users.xml\n\
 <?xml version="1.0" encoding="UTF-8"?>\n\
 <tomcat-users>\n\
@@ -36,18 +38,25 @@ cat <<EOF > conf/tomcat-users.xml\n\
 </tomcat-users>\n\
 EOF\n\
 \n\
-# 2. Lanzar API con parámetros de memoria EXTREMOS para 512MB\n\
-# Reducimos a 128MB y forzamos el uso de memoria serie para ahorrar CPU\n\
-java -Xms128m -Xmx128m -XX:+UseSerialGC -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &\n\
+# 2. Lanzar API usando el JAR directamente (forma más compatible)\n\
+# Forzamos que los JARS de JAXB estén en el classpath\n\
+java -Xms128m -Xmx128m -XX:+UseSerialGC \\\n\
+     -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" \\\n\
+     org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 & \n\
 \n\
-echo "Esperando a la API (Máximo 10 min)..."\n\
+# Si el anterior falla, intentamos el plan B (ejecución directa por manifest)\n\
+if ! ps -p $! > /dev/null; then\n\
+    java -Xms128m -Xmx128m -XX:+UseSerialGC -jar es.upv.etsinf.ti.centroeducativo-0.2.0.jar > api_log.txt 2>&1 &\n\
+fi\n\
+\n\
+echo "Esperando a la API..."\n\
 count=0\n\
 while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do\n\
     echo "API cargando... reintentando en 20s ($count/30)"\n\
     sleep 20\n\
     ((count++))\n\
     if [ $count -gt 30 ]; then\n\
-        echo "=== ERROR: LA API NO ARRANCA. MOSTRANDO LOGS DE SPRING ==="\n\
+        echo "=== LOGS DE LA API (api_log.txt) ==="\n\
         cat api_log.txt\n\
         exit 1\n\
     fi\n\
@@ -59,9 +68,11 @@ echo "API LISTA! Poblando..."\n\
 kill $SOCAT_PID\n\
 sleep 2\n\
 \n\
-# 3. Tomcat con memoria ajustada\n\
-export CATALINA_OPTS="-Xms128m -Xmx128m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"\n\
+export CATALINA_OPTS="-Xms128m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"\n\
 catalina.sh run' > start.sh && chmod +x start.sh
+
+EXPOSE 8080
+CMD ["./start.sh"]
 
 EXPOSE 8080
 CMD ["./start.sh"]
