@@ -63,7 +63,7 @@
         <button class="btn btn-outline-primary" onclick="history.back()">
           <i class="bi bi-arrow-left me-2"></i>Volver
         </button>
-        <a href="/NOL2425" class="btn btn-outline-secondary">
+        <a href="/" class="btn btn-outline-secondary">
           <i class="bi bi-house me-2"></i>Inicio
         </a>
       </div>
