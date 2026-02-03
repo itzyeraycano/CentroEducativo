@@ -17,51 +17,42 @@ RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
 
 RUN mkdir -p /home/dew/CentroEducativo/ && cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
 
-RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
-    printf "#!/bin/bash\n\
-socat TCP-LISTEN:8080,fork,reuseaddr PIPE & \n\
-SOCAT_PID=\$!\n\
-\n\
-cat <<EOF > conf/tomcat-users.xml\n\
-<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\n\
-<tomcat-users>\n\
-  <role rolename=\\\"rolalu\\\"/> <role rolename=\\\"rolpro\\\"/>\n\
-  <user username=\\\"11223344A\\\" password=\\\"batman\\\" roles=\\\"rolalu\\\"/>\n\
-  <user username=\\\"69696969J\\\" password=\\\"hola1234\\\" roles=\\\"rolpro\\\"/>\n\
-  <user username=\\\"33445566X\\\" password=\\\"cuidadin\\\" roles=\\\"rolalu\\\"/>\n\
-</tomcat-users>\n\
-EOF\n\
-\n\
-echo \"Lanzando API...\"\n\
-java -Xms128m -Xmx128m -XX:+UseSerialGC -cp \"es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar\" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 & \n\
-API_PID=\$!\n\
-\n\
-sleep 5\n\
-if ! ps -p \$API_PID > /dev/null; then\n\
-    echo \"=== ERROR CRÍTICO: LA API HA MUERTO AL ARRANCAR ===\"\n\
-    cat api_log.txt\n\
-    exit 1\n\
-fi\n\
-\n\
-echo \"API ejecutándose. Esperando respuesta HTTP (Hibernate inicializando)...\"\n\
-count=0\n\
-while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do\n\
-    count=\$((count + 1))\n\
-    echo \"API cargando... intento \$count de 40\"\n\
-    sleep 20\n\
-    if [ \$count -ge 40 ]; then\n\
-        echo \"=== TIEMPO AGOTADO: LA API NO RESPONDE ===\"\n\
-        cat api_log.txt\n\
-        exit 1\n\
-    fi\n\
-done\n\
-\n\
-echo \"API LISTA! Poblando...\"\n\
-./poblar_centro_educativo.sh\n\
-kill \$SOCAT_PID\n\
-sleep 2\n\
-export CATALINA_OPTS=\"-Xms128m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom\"\n\
-catalina.sh run" > start.sh && chmod +x start.sh
+# Creamos el start.sh línea a línea para evitar errores de escape de caracteres
+RUN echo '#!/bin/bash' > start.sh && \
+    echo 'socat TCP-LISTEN:8080,fork,reuseaddr PIPE &' >> start.sh && \
+    echo 'SOCAT_PID=$!' >> start.sh && \
+    echo 'cat <<EOF > conf/tomcat-users.xml' >> start.sh && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' >> start.sh && \
+    echo '<tomcat-users>' >> start.sh && \
+    echo '  <role rolename="rolalu"/> <role rolename="rolpro"/>' >> start.sh && \
+    echo '  <user username="11223344A" password="batman" roles="rolalu"/>' >> start.sh && \
+    echo '  <user username="69696969J" password="hola1234" roles="rolpro"/>' >> start.sh && \
+    echo '  <user username="33445566X" password="cuidadin" roles="rolalu"/>' >> start.sh && \
+    echo '</tomcat-users>' >> start.sh && \
+    echo 'EOF' >> start.sh && \
+    echo 'echo "Lanzando API..."' >> start.sh && \
+    echo 'java -Xms128m -Xmx128m -XX:+UseSerialGC -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &' >> start.sh && \
+    echo 'API_PID=$!' >> start.sh && \
+    echo 'sleep 5' >> start.sh && \
+    echo 'if ! ps -p $API_PID > /dev/null; then' >> start.sh && \
+    echo '    echo "=== ERROR CRÍTICO INICIAL: LA API NO HA PODIDO ARRANCAR ==="' >> start.sh && \
+    echo '    cat api_log.txt' >> start.sh && \
+    echo '    exit 1' >> start.sh && \
+    echo 'fi' >> start.sh && \
+    echo 'echo "API en ejecucion. Esperando respuesta HTTP..."' >> start.sh && \
+    echo 'count=0' >> start.sh && \
+    echo 'while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do' >> start.sh && \
+    echo '    count=$((count + 1))' >> start.sh && \
+    echo '    echo "API cargando... intento $count de 40"' >> start.sh && \
+    echo '    sleep 15' >> start.sh && \
+    echo '    if [ $count -ge 40 ]; then echo "TIEMPO AGOTADO"; cat api_log.txt; exit 1; fi' >> start.sh && \
+    echo 'done' >> start.sh && \
+    echo 'echo "API LISTA! Poblando..."' >> start.sh && \
+    echo './poblar_centro_educativo.sh' >> start.sh && \
+    echo 'kill $SOCAT_PID' >> start.sh && \
+    echo 'export CATALINA_OPTS="-Xms128m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"' >> start.sh && \
+    echo 'catalina.sh run' >> start.sh && \
+    chmod +x start.sh
 
 EXPOSE 8080
 CMD ["./start.sh"]
