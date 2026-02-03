@@ -1,10 +1,7 @@
-FROM tomcat:10.1-jdk11-openjdk-slim
+FROM tomcat:9.0-jdk8-openjdk-slim
 
-# 1. Instalación de herramientas y librerías JAXB
+# 1. Instalación de herramientas necesarias
 RUN apt-get update && apt-get install -y curl jq wget socat procps && \
-    wget https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar && \
-    wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-core/2.3.0.1/jaxb-core-2.3.0.1.jar && \
-    wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/local/tomcat
@@ -12,29 +9,28 @@ WORKDIR /usr/local/tomcat
 # 2. Copiar archivos del repositorio
 COPY . .
 
-# 3. Preparar Servlets y Compilar
+# 3. Preparar Servlets y Compilar (Java 8)
 RUN mkdir -p webapps/ROOT && cp -r NOL2425/src/main/webapp/* webapps/ROOT/
 RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
     javac -d webapps/ROOT/WEB-INF/classes \
     -cp "NOL2425/src/main/webapp/WEB-INF/lib/*:/usr/local/tomcat/lib/*" \
     $(find NOL2425/src/main/java -name "*.java")
 
-# 4. Generar script de arranque con validación de Git LFS
+# 4. Asegurar ubicación del JAR de la API
+RUN mkdir -p /home/dew/CentroEducativo/ && \
+    cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
+
+# 5. Generar script de arranque start.sh
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash' > start.sh && \
-    # Validación de integridad del JAR
+    # Validación de integridad por si vuelve a fallar LFS
     echo 'FILE="es.upv.etsinf.ti.centroeducativo-0.2.0.jar"' >> start.sh && \
     echo 'SIZE=$(stat -c%s "$FILE" 2>/dev/null || echo 0)' >> start.sh && \
-    echo 'if [ "$SIZE" -lt 1000000 ]; then' >> start.sh && \
-    echo '  echo "=== ERROR CRÍTICO: EL JAR MIDE MENOS DE 1MB ==="' >> start.sh && \
-    echo '  echo "Probablemente sea un puntero de Git LFS. Contenido del archivo:"' >> start.sh && \
-    echo '  cat "$FILE"' >> start.sh && \
-    echo '  exit 1' >> start.sh && \
-    echo 'fi' >> start.sh && \
-    # Engaño al Health Check de Koyeb
+    echo 'if [ "$SIZE" -lt 1000000 ]; then echo "ERROR: JAR CORRUPTO (LFS)"; exit 1; fi' >> start.sh && \
+    # Puerto falso para Koyeb
     echo 'socat TCP-LISTEN:8080,fork,reuseaddr PIPE &' >> start.sh && \
     echo 'SOCAT_PID=$!' >> start.sh && \
-    # Configuración de usuarios Tomcat
+    # Usuarios para AuthFiltro
     echo 'cat <<EOF > conf/tomcat-users.xml' >> start.sh && \
     echo '<?xml version="1.0" encoding="UTF-8"?>' >> start.sh && \
     echo '<tomcat-users>' >> start.sh && \
@@ -44,20 +40,19 @@ RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '  <user username="11223344A" password="batman" roles="rolalu"/>' >> start.sh && \
     echo '</tomcat-users>' >> start.sh && \
     echo 'EOF' >> start.sh && \
-    # Lanzamiento de la API
-    echo 'echo "Lanzando API..."' >> start.sh && \
-    echo 'java -Xms128m -Xmx128m -XX:+UseSerialGC -Dloader.path="." -jar "$FILE" > api_log.txt 2>&1 &' >> start.sh && \
+    # Lanzar API (En Java 8 no necesitamos los parches JAXB externos)
+    echo 'echo "Lanzando API en Java 8..."' >> start.sh && \
+    echo 'java -Xms128m -Xmx128m -XX:+UseSerialGC -jar "$FILE" > api_log.txt 2>&1 &' >> start.sh && \
     echo 'API_PID=$!' >> start.sh && \
-    echo 'sleep 10' >> start.sh && \
-    echo 'if ! ps -p $API_PID > /dev/null; then' >> start.sh && \
-    echo '  echo "=== LA API HA MUERTO AL ARRANCAR ==="; cat api_log.txt; exit 1' >> start.sh && \
-    echo 'fi' >> start.sh && \
-    # Espera y población
+    echo 'sleep 8' >> start.sh && \
+    echo 'if ! ps -p $API_PID > /dev/null; then echo "API MURIO"; cat api_log.txt; exit 1; fi' >> start.sh && \
+    # Espera y Población
     echo 'count=0' >> start.sh && \
     echo 'while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do' >> start.sh && \
-    echo '  count=$((count + 1)); echo "Esperando API... intento $count"; sleep 15' >> start.sh && \
+    echo '  count=$((count + 1)); echo "Esperando API (Hibernate)... intento $count"; sleep 15' >> start.sh && \
     echo '  if [ $count -ge 60 ]; then cat api_log.txt; exit 1; fi' >> start.sh && \
     echo 'done' >> start.sh && \
+    echo 'echo "API LISTA! Poblando datos..."' >> start.sh && \
     echo './poblar_centro_educativo.sh' >> start.sh && \
     echo 'kill $SOCAT_PID' >> start.sh && \
     echo 'export CATALINA_OPTS="-Xms128m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"' >> start.sh && \
