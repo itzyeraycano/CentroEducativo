@@ -25,20 +25,18 @@ RUN sed -i 's/<JarScanner>/<JarScanner scanManifest="false"\/>/g' conf/context.x
 
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash\n\
-# Subimos la API a 160MB para que Hibernate no se bloquee\n\
-java -Xmx160m -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" \
+java -Xmx180m -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" \
      org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &\n\
-echo "Esperando a que la API responda (max 3 min)..."\n\
-for i in {1..40}; do\n\
-    if curl -s http://localhost:9090/CentroEducativo/login > /dev/null; then\n\
-        echo "API LISTA!"; ./poblar_centro_educativo.sh; break\n\
-    fi\n\
-    echo "Cargando ($i/40)..."; sleep 5\n\
+echo "Esperando a la API de forma indefinida..."\n\
+while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do\n\
+    echo "API aun no disponible... reintentando en 5s"\n\
+    sleep 5\n\
 done\n\
-# Limitamos Tomcat para compensar el aumento de la API\n\
-export CATALINA_OPTS="$CATALINA_OPTS -Xms128m -Xmx160m -Djava.security.egd=file:/dev/./urandom"\n\
-catalina.sh run' > start.sh && \
-    chmod +x start.sh
+echo "API DETECTADA! Iniciando poblacion de datos..."\n\
+./poblar_centro_educativo.sh\n\
+echo "Poblacion terminada. Liberando recursos y lanzando Tomcat..."\n\
+export CATALINA_OPTS="-Xms128m -Xmx160m -Djava.security.egd=file:/dev/./urandom"\n\
+catalina.sh run' > start.sh && chmod +x start.sh
 
 EXPOSE 8080
 CMD ["./start.sh"]
