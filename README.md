@@ -4,14 +4,17 @@
 Este proyecto es una evolución técnica de una plataforma académica desarrollada originalmente en 3º de carrera. Lo que nació como una aplicación dependiente de entornos locales (Eclipse, Tomcat manual y APIs virtuales), ha sido transformado en una solución de Infraestructura como Código (IaC) totalmente autónoma y desplegada en la nube.
 
 He logrado que un stack tecnológico complejo (Servlets Jakarta + Spring Boot API + Hibernate) conviva de forma estable en un entorno limitado de 512MB de RAM mediante optimización de la JVM y contenerización con Docker.
+
 👥 Usuarios de Prueba y Funcionalidades
 
 Para probar la robustez del sistema de autenticación, la gestión de cookies y la comunicación con la API, puedes utilizar las siguientes credenciales:
-Rol	DNI (Usuario)	Contraseña	Funciones principales
-Administrador	111111111	654321	Control total: Es el único perfil con permisos para matricular alumnos en nuevas asignaturas. Consulta global de datos.
-Profesor	69696969J	hola1234	Gestión académica: Acceso a las actas de sus asignaturas. Puede modificar notas (PUT) en tiempo real.
-Alumno (Wick)	33445566X	cuidadin	Consulta personal: Visualización de expediente actualizado y descarga de certificado PDF.
-Alumno (Wayne)	11223344A	batman	Consulta personal: Acceso a notas de sus asignaturas matriculadas.
+
+    Rol	DNI (Usuario)	Contraseña	Funciones principales
+    Administrador	111111111	654321	Control total: Es el único perfil con permisos para matricular alumnos en nuevas asignaturas. Consulta global de datos.
+    Profesor	69696969J	hola1234	Gestión académica: Acceso a las actas de sus asignaturas. Puede modificar notas (PUT) en tiempo real.
+    Alumno (Wick)	33445566X	cuidadin	Consulta personal: Visualización de expediente actualizado y descarga de certificado PDF.
+    Alumno (Wayne)	11223344A	batman	Consulta personal: Acceso a notas de sus asignaturas matriculadas.
+
 🛠️ Arquitectura y Seguridad
 
 La aplicación se basa en un flujo de seguridad y datos desacoplado:
