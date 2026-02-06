@@ -37,13 +37,12 @@ Para probar la robustez del sistema de autenticación, la gestión de cookies y 
     DNI (Usuario): 11223344A (Bruce Wayne)
 
     Contraseña: batman
-    
+
 
     Responsabilidades: Consulta de expediente personal y generación de certificados académicos en PDF.
 
     Caso de prueba: Loguéate para ver cómo las notas modificadas por el profesor se reflejan instantáneamente en tu expediente y descarga el certificado para validar los datos.
 
-    --------------------------------------------------------------------------------------------------------------------------------------
 
 
 
