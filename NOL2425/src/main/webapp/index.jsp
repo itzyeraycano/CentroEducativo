@@ -60,9 +60,7 @@
 						</div>
 						<div class="card-body">
 							<ol class="list-group list-group-numbered">
-								<li class="list-group-item">Caballero Martínez, Fabio</li>
 								<li class="list-group-item">Cano Moya, Yeray</li>
-								<li class="list-group-item">Domenech Gascó, Marc</li>
 								<li class="list-group-item">Genés Bastidas, Rubén</li>
 								<li class="list-group-item">Makmar, Laila</li>
 								<li class="list-group-item">Marín Hernández, José</li>
