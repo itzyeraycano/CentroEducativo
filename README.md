@@ -18,6 +18,8 @@ Para probar la robustez del sistema de autenticación, la gestión de cookies y 
 
     Caso de prueba: Úsalo para gestionar las actas globales y verificar que solo este rol tiene acceso a las funciones de escritura de matrículas.
 
+    No posee front para modificar las asignaturas matriculadas de cada alumno, si queremos añadir o eliminar asignaturas matriculadas de un alumno debemos hacerlo mediante Postman u otra aplicacion para trabajar con llamadas a APIs.
+
 👨‍🏫 Perfil: Profesor
 
     DNI (Usuario): 69696969J (Pablo Martines)
