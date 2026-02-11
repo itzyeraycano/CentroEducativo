@@ -1,9 +1,9 @@
 FROM tomcat:10.1-jdk11-openjdk-slim
 
-# 1. Instalación de dependencias y parches JAXB
+# 1. Instalación de dependencias y parches JAXB (URLs corregidas)
 RUN apt-get update && apt-get install -y curl jq wget procps && \
     wget https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar && \
-    wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-core/2.3.0.1.jar && \
+    wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-core/2.3.0.1/jaxb-core-2.3.0.1.jar && \
     wget https://repo1.maven.org/maven2/com/sun/xml/bind/jaxb-impl/2.3.1/jaxb-impl-2.3.1.jar && \
     rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +23,7 @@ RUN mkdir -p webapps/ROOT/WEB-INF/classes && \
 RUN mkdir -p /home/dew/CentroEducativo/ && \
     cp es.upv.etsinf.ti.centroeducativo-0.2.0.jar /home/dew/CentroEducativo/ || true
 
-# 5. Generar script de arranque start.sh (SIN LIMITACIONES)
+# 5. Generar script de arranque start.sh
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash' > start.sh && \
     # Configuración de usuarios para el Realm de Tomcat
@@ -37,7 +37,7 @@ RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '  <user username="11223344A" password="batman" roles="rolalu"/>' >> start.sh && \
     echo '</tomcat-users>' >> start.sh && \
     echo 'EOF' >> start.sh && \
-    # Configuración de credenciales para tu AuthFiltro
+    # Credenciales AuthFiltro
     echo 'mkdir -p webapps/ROOT/WEB-INF/' >> start.sh && \
     echo 'cat <<EOF > webapps/ROOT/WEB-INF/credenciales' >> start.sh && \
     echo '111111111=654321' >> start.sh && \
@@ -45,13 +45,13 @@ RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '69696969J=hola1234' >> start.sh && \
     echo '11223344A=batman' >> start.sh && \
     echo 'EOF' >> start.sh && \
-    # LANZAMIENTO SIN RESTRICCIONES (-Xms/-Xmx eliminados para que use la RAM del PC)
+    # Lanzamiento API (Sin límites de RAM)
     echo 'java -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &' >> start.sh && \
-    # Espera a que la API responda
+    # Espera rápida a la API
     echo 'while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do sleep 2; done' >> start.sh && \
-    # Población de datos
+    # Población
     echo './poblar_centro_educativo.sh' >> start.sh && \
-    # Iniciar Tomcat real con toda la potencia
+    # Tomcat con potencia total
     echo 'catalina.sh run' >> start.sh && \
     chmod +x start.sh
 
