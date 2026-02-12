@@ -26,32 +26,19 @@ RUN mkdir -p /home/dew/CentroEducativo/ && \
 # 5. Generar script de arranque start.sh
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash' > start.sh && \
-    # Configuración de usuarios para el Realm de Tomcat
-    echo 'cat <<EOF > conf/tomcat-users.xml' >> start.sh && \
-    echo '<?xml version="1.0" encoding="UTF-8"?>' >> start.sh && \
-    echo '<tomcat-users>' >> start.sh && \
-    echo '  <role rolename="rolalu"/> <role rolename="rolpro"/> <role rolename="admin"/>' >> start.sh && \
-    echo '  <user username="111111111" password="654321" roles="admin,rolalu,rolpro"/>' >> start.sh && \
-    echo '  <user username="33445566X" password="cuidadin" roles="rolalu"/>' >> start.sh && \
-    echo '  <user username="69696969J" password="hola1234" roles="rolpro"/>' >> start.sh && \
-    echo '  <user username="11223344A" password="batman" roles="rolalu"/>' >> start.sh && \
-    echo '</tomcat-users>' >> start.sh && \
-    echo 'EOF' >> start.sh && \
-    # Credenciales AuthFiltro
-    echo 'mkdir -p webapps/ROOT/WEB-INF/' >> start.sh && \
-    echo 'cat <<EOF > webapps/ROOT/WEB-INF/credenciales' >> start.sh && \
-    echo '111111111=654321' >> start.sh && \
-    echo '33445566X=cuidadin' >> start.sh && \
-    echo '69696969J=hola1234' >> start.sh && \
-    echo '11223344A=batman' >> start.sh && \
-    echo 'EOF' >> start.sh && \
-    # Lanzamiento API (Sin límites de RAM)
+    # 1. Lanzamos la API en segundo plano
     echo 'java -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &' >> start.sh && \
-    # Espera rápida a la API
-    echo 'while ! curl -s http://localhost:9090/CentroEducativo/login > /dev/null; do sleep 2; done' >> start.sh && \
-    # Población
+    # 2. BLOQUEO: No seguimos hasta que la API responda 200 OK en el login
+    echo 'echo "Esperando a que la API despierte..."' >> start.sh && \
+    echo 'until curl -s -f http://localhost:9090/CentroEducativo/login > /dev/null; do' >> start.sh && \
+    echo '  sleep 2' >> start.sh && \
+    echo '  echo "API aún cargando... reintentando..."' >> start.sh && \
+    echo 'done' >> start.sh && \
+    # 3. Una vez que la API responde, poblamos los datos
+    echo 'echo "API lista. Poblando base de datos..."' >> start.sh && \
     echo './poblar_centro_educativo.sh' >> start.sh && \
-    # Tomcat con potencia total
+    # 4. SOLO AHORA lanzamos Tomcat
+    echo 'echo "Iniciando Tomcat..."' >> start.sh && \
     echo 'catalina.sh run' >> start.sh && \
     chmod +x start.sh
 
