@@ -26,19 +26,19 @@ RUN mkdir -p /home/dew/CentroEducativo/ && \
 # 5. Generar script de arranque start.sh
 RUN chmod +x lanzaCentroEducativo.sh poblar_centro_educativo.sh && \
     echo '#!/bin/bash' > start.sh && \
-    # 1. Lanzamos la API en segundo plano
-    echo 'java -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &' >> start.sh && \
-    # 2. BLOQUEO: No seguimos hasta que la API responda 200 OK en el login
-    echo 'echo "Esperando a que la API despierte..."' >> start.sh && \
+    # Lanzamiento con optimización de entropía para acelerar el inicio de la JVM
+    echo 'java -Djava.security.egd=file:/dev/./urandom -cp "es.upv.etsinf.ti.centroeducativo-0.2.0.jar:jaxb-api-2.3.1.jar:jaxb-core-2.3.0.1.jar:jaxb-impl-2.3.1.jar" org.springframework.boot.loader.JarLauncher > api_log.txt 2>&1 &' >> start.sh && \
+    # Bucle de espera agresivo (reintenta cada 0.5 segundos en lugar de 2)
+    echo 'echo "Arrancando ..."' >> start.sh && \
     echo 'until curl -s -f http://localhost:9090/CentroEducativo/login > /dev/null; do' >> start.sh && \
-    echo '  sleep 2' >> start.sh && \
-    echo '  echo "API aún cargando... reintentando..."' >> start.sh && \
+    echo '  sleep 0.5' >> start.sh && \
     echo 'done' >> start.sh && \
-    # 3. Una vez que la API responde, poblamos los datos
-    echo 'echo "API lista. Poblando base de datos..."' >> start.sh && \
+    # Población inmediata
+    echo 'echo "API Online. Poblando datos..."' >> start.sh && \
     echo './poblar_centro_educativo.sh' >> start.sh && \
-    # 4. SOLO AHORA lanzamos Tomcat
-    echo 'echo "Iniciando Tomcat..."' >> start.sh && \
+    # Tomcat con parámetros de rendimiento para local
+    echo 'echo " Lanzando Tomcat..."' >> start.sh && \
+    echo 'export CATALINA_OPTS="-Djava.security.egd=file:/dev/./urandom"' >> start.sh && \
     echo 'catalina.sh run' >> start.sh && \
     chmod +x start.sh
 
